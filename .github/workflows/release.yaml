@@ -1,0 +1,45 @@
+name: 'Release'
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'CHANGELOG.md'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Token
+        id: get_workflow_token
+        uses: peter-murray/workflow-application-token-action@v2
+        with:
+          application_id: ${{ secrets.APPLICATION_ID }}
+          application_private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Download dependencies
+        run: |
+          npm ci
+
+      - name: Semantic Release
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ steps.get_workflow_token.outputs.token }}@github.com" > ~/.git-credentials
+          cat ~/.git-credentials
+          npm run release
+
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
+          GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
